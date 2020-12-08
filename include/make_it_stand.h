@@ -15,8 +15,8 @@
 //   MiF #MiF by 3 list of inner mesh face indices into rows of MiV
 // 
 void make_it_stand(
-	const Eigen::MatrixXd & V,
-	const Eigen::MatrixXi & F,
+	const Eigen::MatrixXd &V,
+	const Eigen::MatrixXi &F,
 	Eigen::MatrixXd &MiV,
 	Eigen::MatrixXi &MiF
 );

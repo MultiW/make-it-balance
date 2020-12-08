@@ -4,4 +4,9 @@ void make_it_stand(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::Ma
 {
 	MiV.resize(V.rows(), V.cols());
 	MiF.resize(F.rows(), F.cols());
+
+	MiV = V;
+	MiF = F;
+
+	// Voxelize mesh
 }

@@ -12,10 +12,11 @@ find_package(LIBIGL REQUIRED QUIET)
 
 # include directories
 include_directories("${PROJECT_SOURCE_DIR}/include/")
+include_directories(${LIBIGL_INCLUDE_DIR})
 
 # include source code
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)
 file(GLOB CPP_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
-add_executable(${PROJECT_NAME} main.cpp ${H_FILES} ${CPP_FILES})
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/main.cpp ${H_FILES} ${CPP_FILES})
 target_link_libraries(${PROJECT_NAME} igl::core igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui)

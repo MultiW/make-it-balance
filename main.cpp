@@ -1,3 +1,4 @@
+#include <iostream>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/fast_winding_number.h>
 #include <igl/winding_number.h>
@@ -15,8 +16,12 @@ int main(int argc, char *argv[])
 
 	make_it_stand(V, F, MiV, MiF);
 
-  	// == Visualization ==
-  	igl::opengl::glfw::Viewer viewer;
+
+	igl::read_triangle_mesh("../data/humpty_outer.stl", V, F);
+	igl::read_triangle_mesh("../data/humpty_inner.stl", MiV, MiF);
+
+	// == Visualization ==
+	igl::opengl::glfw::Viewer viewer;
 
 	// display main object
 	viewer.data().set_mesh(V, F);
