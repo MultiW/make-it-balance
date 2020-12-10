@@ -1,19 +1,9 @@
 #include <iostream>
 #include <igl/opengl/glfw/Viewer.h>
-#include "make_it_stand.h"
-#include "inner_void_mesh.h"
-
-
-#include <igl/bounding_box.h>
-#include <igl/voxel_grid.h>
-#include <igl/grid.h>
-#include <igl/signed_distance.h>
-#include <igl/triangulated_grid.h>
-#include <igl/unproject_onto_mesh.h>
-#include <igl/rotation_matrix_from_directions.h>
-
 #include <vector>
 #include <string>
+
+#include "make_it_stand.h"
 
 
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
