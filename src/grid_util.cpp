@@ -14,11 +14,11 @@ void createAlignedBox(const Eigen::MatrixXd &V, Eigen::AlignedBox3d &box) {
 	}
 }
 
-void transformGrid(const Eigen::MatrixXd &V, const Eigen::AlignedBox3d &destination, Eigen::MatrixXd &Vout, bool keepSize = false) {
+void transformVertices(const Eigen::MatrixXd &V, const Eigen::AlignedBox3d &newOrientation, bool keepSize, Eigen::MatrixXd &Vout) {
 	Vout.resize(V.rows(), 3);
 
-	Eigen::Vector3d corner1 = destination.corner(destination.BottomLeftFloor);
-	Eigen::Vector3d corner2 = destination.corner(destination.TopRightCeil);
+	Eigen::Vector3d corner1 = newOrientation.corner(newOrientation.BottomLeftFloor);
+	Eigen::Vector3d corner2 = newOrientation.corner(newOrientation.TopRightCeil);
 
 	// Compute diagonals of input and output grids
 	Eigen::AlignedBox<double, 3> inBox;
@@ -45,6 +45,10 @@ void transformGrid(const Eigen::MatrixXd &V, const Eigen::AlignedBox3d &destinat
 	for (int i = 0; i < Vout.rows(); i++) {
 		Vout.row(i) += translate.transpose();
 	}
+}
+
+void transformVertices(const Eigen::MatrixXd& V, const Eigen::AlignedBox3d& newOrientation, Eigen::MatrixXd& Vout) {
+	transformVertices(V, newOrientation, false, Vout);
 }
 
 void createVoxelGrid(const Eigen::MatrixXd &V, Eigen::MatrixXd &centers, Eigen::MatrixXd &corners) {
@@ -75,7 +79,7 @@ void createVoxelGrid(const Eigen::MatrixXd &V, Eigen::MatrixXd &centers, Eigen::
 	Eigen::Vector3d outBLF = centersBox.corner(centersBox.BottomLeftFloor) - (voxelLen / 2.0);
 	Eigen::Vector3d outTRC = centersBox.corner(centersBox.TopRightCeil) + (voxelLen / 2.0);
 	Eigen::AlignedBox3d outBox(outBLF, outTRC);
-	transformGrid(defaultGrid, outBox, corners);
+	transformVertices(defaultGrid, outBox, corners);
 }
 
 void alignToAxis(const Eigen::MatrixXd& V, Eigen::MatrixXd& alignedV) {
@@ -88,5 +92,5 @@ void alignToAxis(const Eigen::MatrixXd& V, Eigen::MatrixXd& alignedV) {
 	igl::grid(dim, alignedGrid);
 	createAlignedBox(alignedGrid, alignedBox);
 
-	transformGrid(V, alignedBox, alignedV, true);
+	transformVertices(V, alignedBox, true, alignedV);
 }

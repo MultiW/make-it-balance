@@ -12,6 +12,7 @@
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <igl/bounding_box.h>
 #include <igl/grid.h>
+#include <igl/centroid.h>
 
 #include "include/make_it_stand.h"
 #include "include/grid_util.h"
@@ -19,10 +20,15 @@
 
 #define PI 3.14159265
 
-
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
 
-igl::opengl::glfw::Viewer viewer;
+// Viewer data indices
+const int MESH_DATA_IDX = 0;
+const int INNER_DATA_MESH_IDX = 1;
+const int PLANE_DATA_IDX = 2;
+const int GRAVITY_DATA_IDX = 3;
+
+const Eigen::Vector3d DEFAULT_GRAVITY(0.0,-1.0,0.0);
 
 // Predefined colors
 const Eigen::RowVector3d orange(1.0,0.7,0.2);
@@ -31,6 +37,9 @@ const Eigen::RowVector3d blue(0.2,0.3,0.8);
 const Eigen::RowVector3d green(0.2,0.6,0.3);
 const Eigen::RowVector3d black(0.0,0.0,0.0);
 
+igl::opengl::glfw::Viewer viewer;
+
+
 struct State
 {
 	// object current position/orientation
@@ -38,9 +47,10 @@ struct State
 	Eigen::MatrixXi F;
 	Eigen::MatrixXd planeV;
 	Eigen::MatrixXi planeF;
+	Eigen::RowVector3d planeCenter;
 
 	bool selectingBalancePoint = true;
-	Eigen::RowVector3d balancePoint;
+	int balancePointIdx;
 
 	// gravity unit vector
 	Eigen::Vector3d gravity;
@@ -61,6 +71,18 @@ double cos_deg(double angle)
 	return std::cos(angle * PI / 180);
 }
 
+Eigen::RowVector3d getBalancePoint()
+{
+	return state.V.row(state.balancePointIdx);
+}
+
+void updateBalancePoint()
+{
+	viewer.selected_data_index = MESH_DATA_IDX;
+	viewer.data().clear_points();
+	viewer.data().set_points(getBalancePoint(), yellow);
+}
+
 void updateGravity()
 {
 	// Convert yaw, pitch, roll to vector
@@ -69,36 +91,64 @@ void updateGravity()
 	state.gravity(1) = -sin_deg(state.yaw) * sin_deg(state.pitch) * sin_deg(state.roll) + cos_deg(state.yaw) * cos_deg(state.roll);
 	state.gravity(2) = cos_deg(state.pitch) * sin_deg(state.roll);
 
+	if (state.gravity.isZero()) {
+		state.gravity = DEFAULT_GRAVITY;
+	}
+
 	// TODO: REMOVE gravity vector
-	viewer.selected_data_index = 3;
+	viewer.selected_data_index = GRAVITY_DATA_IDX;
 	viewer.data().clear_points();
 	viewer.data().add_points(Eigen::RowVector3d(0.0,0.0,0.0), black);
-	viewer.data().add_points(state.gravity.transpose() / 4.0, black);
+	viewer.data().add_points(state.gravity.transpose() / 10.0, black);
 }
 
-void updateObject()
+void updateMesh()
 {
-	// TODO change object position
-	// TODO shift balance point
-	
+	// Rotate mesh (in reverse direction from gravity)
+	Eigen::MatrixXd newOrientationPoints;
+	newOrientationPoints.resize(2,3);
+	newOrientationPoints <<
+		Eigen::RowVector3d::Zero(),
+		getBalancePoint();
+	Eigen::AlignedBox3d newOrientation;
+	createAlignedBox(newOrientationPoints, newOrientation);
+
+	Eigen::MatrixXd oldV = state.V;
+	transformVertices(oldV, newOrientation, true, state.V);
+
+	//Eigen::Matrix3d R;
+	//R <<
+	//	cos_deg(state.yaw)*cos_deg(state.pitch), -cos_deg(state.yaw)*sin_deg(state.pitch)*sin_deg(state.roll) - sin_deg(state.yaw)*cos_deg(state.roll), -cos_deg(state.yaw)*sin_deg(state.pitch)*cos_deg(state.roll) + sin_deg(state.yaw)*sin_deg(state.roll),
+	//	sin_deg(state.yaw)*cos_deg(state.pitch), -sin_deg(state.yaw)*sin_deg(state.pitch)*sin_deg(state.roll) + cos_deg(state.yaw)*cos_deg(state.roll), -sin_deg(state.yaw)*sin_deg(state.pitch)*cos_deg(state.roll) - cos_deg(state.yaw)*sin_deg(state.roll),
+	//	sin_deg(state.pitch), cos_deg(state.pitch)*sin_deg(state.roll), cos_deg(state.pitch)*sin_deg(state.roll);
+	//state.V *= R.transpose();
+
+	// Translate mesh to middle of plane
+	Eigen::RowVector3d translate = state.planeCenter - getBalancePoint();
+	for (int i = 0; i < state.V.rows(); i++) {
+		state.V.row(i) += translate;
+	}
+
+	// Update viewer
+	viewer.selected_data_index = MESH_DATA_IDX;
+	viewer.data().set_mesh(state.V, state.F);
 }
 
-bool findLowestPoint(const Eigen::MatrixXd &V, Eigen::RowVector3d &lowest)
+bool findLowestPointIdx(const Eigen::MatrixXd &V, int &lowestIdx)
 {
-	double minZ = V.col(2).minCoeff();
-	int minIdx = -1;
+	int heightCol = 1;
+	double minZ = V.col(heightCol).minCoeff();
+	lowestIdx = -1;
 	for (int i = 0; i < V.rows(); i++) {
-		if (V(i, 2) == minZ) {
-			minIdx = i;
+		if (V(i, heightCol) == minZ) {
+			lowestIdx = i;
 			break;
 		}
 	}
 
-	if (minIdx == -1) {
+	if (lowestIdx == -1) {
 		return false;
 	}
-
-	lowest = V.row(minIdx);
 
 	return true;
 }
@@ -126,14 +176,20 @@ void initState(int argc, char *argv[])
 		0, 1, 2,
 		2, 1, 3;
 
+	state.planeCenter = state.planeV.colwise().sum() / 4.0;
+
 	// Gravity points down by default
-	state.gravity << 0.0, -1.0, 0.0;
+	state.yaw = 0.0;
+	state.pitch = 0.0;
+	state.roll = 0.0;
+	state.gravity = DEFAULT_GRAVITY;
 	
 	// set lowest point as balance point
-	if (!findLowestPoint(state.V, state.balancePoint)) {
+	if (!findLowestPointIdx(state.V, state.balancePointIdx)) {
 		std::cerr << "Failed to find index of lowest mesh point";
 		exit(-1);
 	}
+	updateBalancePoint();
 }
 
 int main(int argc, char *argv[])
@@ -145,23 +201,6 @@ int main(int argc, char *argv[])
 	Eigen::MatrixXi MiF;
 
 	make_it_stand(state.V, state.F, MiV, MiF);
-
-	// TODO: REMOVE. Temporary test to display meshes
-	//igl::read_triangle_mesh("../data/humpty_outer.stl", V, F);
-	//igl::read_triangle_mesh("../data/humpty_inner.stl", MiV, MiF);
-
-	// TODO DELETE. code to rotate shape
-	//Eigen::Matrix3d rotate;
-	//Eigen::Vector3d ang(-5, 5, 5);
-	//Eigen::Vector3d v0 = planeV.row(1).transpose();
-	//Eigen::Vector3d v1 = planeV.row(1).transpose() + ang;
-	//rotate = igl::rotation_matrix_from_directions(v0, v1);
-	//std::cout << rotate << std::endl;
-	//planeV *= rotate.transpose();
-	//planeV.col(0).array() += 0.5;
-	//planeV.col(1).array() += 1.0;
-	//planeV.col(2).array() += 0.5;
-
 
 	// == GUI ==
 	// Select balance point
@@ -187,11 +226,10 @@ int main(int argc, char *argv[])
 			{
 				long c;
 				bary.maxCoeff(&c);
-				state.balancePoint = state.V.row(state.F(fid, c));
+				state.balancePointIdx = state.F(fid, c);
 
 				// Snap to closest vertex on hit face
-				viewer.data().clear_points();
-				viewer.data().set_points(state.balancePoint, blue);
+				updateBalancePoint();
 				return true;
 			}
 		} 
@@ -213,47 +251,47 @@ int main(int argc, char *argv[])
 			if (ImGui::IsItemActive())
 			{
 				updateGravity();
-				updateObject();
+				updateMesh();
 			}
 			ImGui::SliderFloat("Pitch", &(state.pitch), 0.0, 360.0);
 			if (ImGui::IsItemActive())
 			{
 				updateGravity();
-				updateObject();
+				updateMesh();
 			}
 			ImGui::SliderFloat("Roll", &(state.roll), 0.0, 360.0);
 			if (ImGui::IsItemActive())
 			{
 				updateGravity();
-				updateObject();
+				updateMesh();
 			}
 		};
 	};
 
 	// == Display Meshes ==
-	// display main object
+	// 0: display main mesh 
+	viewer.selected_data_index = MESH_DATA_IDX;
+	viewer.data().set_face_based(true);
 	viewer.data().set_mesh(state.V, state.F);
-	viewer.data().set_face_based(true);
 
-	// display inner voxelized mesh (representing the empty space)
+	// 1: display inner voxelized mesh (representing the empty space)
 	viewer.append_mesh();
+	viewer.data().set_face_based(true);
 	viewer.data().set_mesh(MiV, MiF);
-	viewer.data().set_face_based(true);
 
-	// display plane (representing the ground)
+	// 2: display plane (representing the ground)
 	viewer.append_mesh();
-	viewer.data().set_mesh(state.planeV, state.planeF);
 	viewer.data().set_face_based(true);
+	viewer.data().set_mesh(state.planeV, state.planeF);
 	
 	// TODO: REMOVE gravity vector
-	// show gravity vector
+	// 3: show gravity vector
 	viewer.append_mesh();
-	viewer.data().clear_points();
 	viewer.data().add_points(Eigen::RowVector3d(0.0,0.0,0.0), black);
-	viewer.data().add_points(state.gravity.transpose(), black);
+	viewer.data().add_points(state.gravity.transpose() / 10.0, black);
 
 	// currently selected mesh is the input object
-	viewer.selected_data_index = 0;
+	viewer.selected_data_index = MESH_DATA_IDX;
 
 	viewer.launch();
 }

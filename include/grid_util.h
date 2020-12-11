@@ -1,39 +1,44 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+/*
+  libigl style helper functions.
+*/
+
 
 //
 // Inputs:
-//   V    #vertices by 3 matrix of vertex representing a box
+//   V    #V by 3 matrix of vertex representing a box
 // Outputs:
 //   box  AlignedBox constructed from V
 void createAlignedBox(const Eigen::MatrixXd& V, Eigen::AlignedBox3d& box);
 
 
 //
-// Scales and translates the given set of vertices
-//
-// Transform the vertices based on the transformation between the vertices' bounding
-// box and the given destination bounding box
+// Scale, rotate, and translate the given mesh cloud
+// - Based on the transformation between the vertices' bounding
+//   box and the given destination bounding box
+// - Translation is based on the BottomLeftFloor (Eigen::AlignedBox corner)
 //
 // Inputs:
-//   V            #vertices by 3 matrix of vertices
-//   destination  desired bounding box that transformed V should be in
-//   corner1      first corner of expected bounding box
-//   corner2      opposite corner of corner1
-//   keepSize    boolean indicating whether Vout should be the same size as V
+//   V               #V by 3 matrix of vertices
+//   newOrientation  desired bounding box that transformed V should be in
+//   keepSize        boolean indicating whether Vout should be the same size as V
 // Outputs:
 //   Vout     scaled and transformed v
-void transformGrid(const Eigen::MatrixXd& V, const Eigen::AlignedBox3d &destination, Eigen::MatrixXd& Vout, bool keepSize);
+void transformVertices(const Eigen::MatrixXd& V, const Eigen::AlignedBox3d &newOrientation,  bool keepSize, Eigen::MatrixXd& Vout);
+
+// keepSize = false by default
+void transformVertices(const Eigen::MatrixXd& V, const Eigen::AlignedBox3d &newOrientation, Eigen::MatrixXd& Vout);
 
 //
 // Computes a voxel grid enclosing a given mesh
 //
 // Inputs:
-//   V  #vertices by 3 matrix of vertex positions
+//   V  #V by 3 matrix of vertex positions
 // Outputs:
-//   centers  #x * #y * #z by 3 matrix of voxel centers of the voxels
-//   corners  #x+1 * #y+1 * #z+1 by 3 matrix of voxel centers of the voxels
+//   centers  x*y*z by 3 matrix of voxel centers
+//   corners  (x+1)*(y+1)*(z+1) by 3 matrix of voxel centers
 void createVoxelGrid(const Eigen::MatrixXd& V, Eigen::MatrixXd& centers, Eigen::MatrixXd& corners);
 
 //
