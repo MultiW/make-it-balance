@@ -11,7 +11,8 @@
 
 #include <iostream>
 
-#include "voxel_grid.h"
+#include "grid_util.h"
+
 
 class Voxel {
 	Eigen::Vector3d center;
