@@ -23,10 +23,10 @@
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
 
 // Viewer data indices
-const int MESH_DATA_IDX = 0;
-const int INNER_DATA_MESH_IDX = 1;
-const int PLANE_DATA_IDX = 2;
-const int GRAVITY_DATA_IDX = 3;
+int mesh_data_id;
+int inner_data_mesh_id;
+int plane_data_id;
+int gravity_data_id;
 
 const Eigen::Vector3d DEFAULT_GRAVITY(0.0,-1.0,0.0);
 
@@ -78,9 +78,8 @@ Eigen::RowVector3d getBalancePoint()
 
 void updateBalancePoint()
 {
-	viewer.selected_data_index = MESH_DATA_IDX;
-	viewer.data().clear_points();
-	viewer.data().set_points(getBalancePoint(), yellow);
+	viewer.data(mesh_data_id).clear_points();
+	viewer.data(mesh_data_id).set_points(getBalancePoint(), yellow);
 }
 
 void updateGravity()
@@ -96,10 +95,9 @@ void updateGravity()
 	}
 
 	// TODO: REMOVE gravity vector
-	viewer.selected_data_index = GRAVITY_DATA_IDX;
-	viewer.data().clear_points();
-	viewer.data().add_points(Eigen::RowVector3d(0.0,0.0,0.0), black);
-	viewer.data().add_points(state.gravity.transpose() / 10.0, black);
+	viewer.data(gravity_data_id).clear_points();
+	viewer.data(gravity_data_id).add_points(Eigen::RowVector3d(0.0,0.0,0.0), black);
+	viewer.data(gravity_data_id).add_points(state.gravity.transpose() / 10.0, black);
 }
 
 void updateMesh()
@@ -130,8 +128,7 @@ void updateMesh()
 	}
 
 	// Update viewer
-	viewer.selected_data_index = MESH_DATA_IDX;
-	viewer.data().set_mesh(state.V, state.F);
+	viewer.data(mesh_data_id).set_mesh(state.V, state.F);
 }
 
 bool findLowestPointIdx(const Eigen::MatrixXd &V, int &lowestIdx)
@@ -269,29 +266,32 @@ int main(int argc, char *argv[])
 	};
 
 	// == Display Meshes ==
-	// 0: display main mesh 
-	viewer.selected_data_index = MESH_DATA_IDX;
+	// display main mesh 
+	mesh_data_id = viewer.data().id;
 	viewer.data().set_face_based(true);
-	viewer.data().set_mesh(state.V, state.F);
 
-	// 1: display inner voxelized mesh (representing the empty space)
+	// display inner voxelized mesh (representing the empty space)
 	viewer.append_mesh();
+	inner_data_mesh_id = viewer.data().id;
 	viewer.data().set_face_based(true);
 	viewer.data().set_mesh(MiV, MiF);
 
-	// 2: display plane (representing the ground)
+	// display plane (representing the ground)
 	viewer.append_mesh();
+	plane_data_id = viewer.data().id;
 	viewer.data().set_face_based(true);
 	viewer.data().set_mesh(state.planeV, state.planeF);
 	
 	// TODO: REMOVE gravity vector
-	// 3: show gravity vector
+	// show gravity vector
 	viewer.append_mesh();
+	gravity_data_id = viewer.data().id;
 	viewer.data().add_points(Eigen::RowVector3d(0.0,0.0,0.0), black);
 	viewer.data().add_points(state.gravity.transpose() / 10.0, black);
 
 	// currently selected mesh is the input object
-	viewer.selected_data_index = MESH_DATA_IDX;
+	viewer.selected_data_index = viewer.mesh_index(mesh_data_id);
 
+	updateMesh();
 	viewer.launch();
 }
