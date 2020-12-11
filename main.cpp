@@ -1,12 +1,26 @@
 #include <iostream>
-#include <igl/opengl/glfw/Viewer.h>
 #include <vector>
 #include <string>
+
+#include <igl/opengl/glfw/Viewer.h>
+#include <igl/unproject_onto_mesh.h>
 
 #include "make_it_stand.h"
 
 
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
+
+// Predefined colors
+const Eigen::RowVector3d orange(1.0,0.7,0.2);
+const Eigen::RowVector3d yellow(1.0,0.9,0.2);
+const Eigen::RowVector3d blue(0.2,0.3,0.8);
+const Eigen::RowVector3d green(0.2,0.6,0.3);
+
+struct State
+{
+	bool selectingBalancePoint = true;
+	Eigen::MatrixXd balancePoints;
+} state;
 
 int main(int argc, char *argv[])
 {
@@ -54,6 +68,39 @@ int main(int argc, char *argv[])
 	viewer.data().set_face_based(true);
 
 	viewer.selected_data_index = 0;
+
+	// Select balance point
+	// SOURCE: from deformation assignment starter code
+	Eigen::RowVector3f last_mouse; 
+	viewer.callback_mouse_down =
+		[&](igl::opengl::glfw::Viewer&, int, int) -> bool
+	{
+		last_mouse = Eigen::RowVector3f(
+			viewer.current_mouse_x,viewer.core().viewport(3)-viewer.current_mouse_y,0);
+		if (state.selectingBalancePoint)
+		{
+			// Find closest point on mesh to mouse position
+			int fid;
+			Eigen::Vector3f bary;
+			if (igl::unproject_onto_mesh(
+				last_mouse.head(2), 
+				viewer.core().view,
+				viewer.core().proj, 
+				viewer.core().viewport, 
+				V, F, 
+				fid, bary))
+			{
+				long c;
+				bary.maxCoeff(&c);
+				Eigen::RowVector3d selectedPoint = V.row(F(fid, c));
+
+				// Snap to closest vertex on hit face
+				viewer.data().clear_points();
+				viewer.data().set_points(selectedPoint, blue);
+				return true;
+			}
+		} 
+	};
 
 	viewer.launch();
 }
