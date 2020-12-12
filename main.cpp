@@ -14,8 +14,8 @@
 #include <igl/grid.h>
 #include <igl/centroid.h>
 
-#include "include/make_it_stand.h"
 #include "include/grid_util.h"
+#include "include/inner_void_mesh.h"
 
 
 #define PI 3.14159265
@@ -75,6 +75,10 @@ struct State
 	// user workflow state
 	bool selectBalancePoint = true;
 	bool selectOrientation = false;
+	bool isCarving = false;
+
+	// carving state
+	InnerVoidMesh *innerMesh = NULL;
 } state;
 
 double sin_deg(double angle)
@@ -92,16 +96,11 @@ Eigen::RowVector3d getBalancePoint()
 	return state.V.row(state.balancePointIdx);
 }
 
-void updateCamera()
-{
-	viewer.core().align_camera_center(state.V, state.F);
-}
-
 // Update display of balance point
 void updateBalancePoint()
 {
 	viewer.data(mesh_data_id).clear_points();
-	viewer.data(mesh_data_id).set_points(getBalancePoint(), yellow);
+	viewer.data(mesh_data_id).set_points(getBalancePoint(), state.selectBalancePoint ? yellow : blue);
 }
 
 
@@ -157,10 +156,18 @@ void updateMesh()
 	// Update viewer
 	viewer.data(mesh_data_id).set_vertices(state.V);
 	updateBalancePoint();
+}
 
-	// TODO: recompute inner mesh
-	state.innerV = state.V;
-	viewer.data(inner_data_mesh_id).set_vertices(state.innerV);
+void updateInnerMesh()
+{
+	viewer.data(inner_data_mesh_id).set_mesh(state.innerV, state.innerF);
+}
+
+void clearInnerMesh()
+{
+	state.innerV.resize(0,3);
+	state.innerF.resize(0,3);
+	viewer.data(inner_data_mesh_id).clear();
 }
 
 bool findLowestPointIdx(const Eigen::MatrixXd &V, int &lowestIdx)
@@ -273,13 +280,18 @@ void draw_workflow_control_window()
 	);
 
 	// Balance point selection
-	ImGui::Text("Balance Point");
+	ImGui::Text("1. Balance Point");
 	if (ImGui::Checkbox("Select a balance point", &(state.selectBalancePoint)))
 	{
-		if (state.selectBalancePoint)
+		if (state.selectBalancePoint) // switching to balance point selection
 		{
-			// TODO: set all others to false
+			// Set other checkboxes to false
 			state.selectOrientation = false;
+			state.isCarving = false;
+
+			// Undo carving
+			clearInnerMesh();
+			viewer.data(mesh_data_id).show_faces = true;
 		}
 	}
 	if (state.selectBalancePoint)
@@ -292,13 +304,21 @@ void draw_workflow_control_window()
 
 	// Orientation selection
 	ImGui::Separator();
-	ImGui::Text("Orientation");
+	ImGui::Text("2. Orientation");
 	if (ImGui::Checkbox("Select an orientation", &(state.selectOrientation)))
 	{
-		if (state.selectOrientation)
+		if (state.selectOrientation) // switching to orientation selection
 		{
-			// TODO: set all others to false
+			// Set other checkboxes to false
 			state.selectBalancePoint = false;
+			state.isCarving = false;
+
+			// Undo carving
+			clearInnerMesh();
+			viewer.data(mesh_data_id).show_faces = true;
+
+			// Align object to its balance point
+			updateMesh();
 		}
 	}
 	if (state.selectOrientation)
@@ -323,9 +343,38 @@ void draw_workflow_control_window()
 		}
 	}
 
-	//if (ImGui::CollapsingHeader("Orientation", ImGuiTreeNodeFlags_DefaultOpen))
-	//{
-	//};
+	// Carving selection
+	ImGui::Separator();
+	ImGui::Text("3. Inner Carving");
+	if (ImGui::Checkbox("Begin carving", &(state.isCarving)))
+	{
+		if (state.isCarving) // switching to carving
+		{
+			// Set other checkboxes to false
+			state.selectBalancePoint = false;
+			state.selectOrientation = false;
+
+			// Align object to its balance point
+			updateMesh();
+
+			// Display setup: voxelize inner mesh, make outer mesh transparent
+			viewer.data(mesh_data_id).show_faces = false;
+			if (state.innerMesh != NULL)
+			{
+				delete state.innerMesh;
+			}
+			state.innerMesh = new InnerVoidMesh(state.V, state.F);
+			state.innerMesh->convertToMesh(state.innerV, state.innerF);
+			updateInnerMesh();
+		}
+	}
+	if (state.isCarving)
+	{
+		if (ImGui::Button("Carve", ImVec2(-1, 0)))
+		{
+			// TODO
+		}
+	}
 
 	ImGui::End();
 }
@@ -333,13 +382,6 @@ void draw_workflow_control_window()
 int main(int argc, char *argv[])
 {
 	initState(argc, argv);
-
-	// Outer and inner meshes
-	Eigen::MatrixXd MiV;
-	Eigen::MatrixXi MiF;
-
-	// TODO: make it step by step
-	make_it_stand(state.V, state.F, state.innerV, state.innerF);
 
 	// == GUI ==
 	// menu
@@ -359,7 +401,7 @@ int main(int argc, char *argv[])
 	// display inner voxelized mesh (representing the empty space)
 	viewer.append_mesh();
 	inner_data_mesh_id = viewer.data().id;
-	viewer.data(inner_data_mesh_id).set_mesh(state.innerV, state.innerF);
+	clearInnerMesh();
 
 	// display plane (representing the ground)
 	viewer.append_mesh();
@@ -376,7 +418,7 @@ int main(int argc, char *argv[])
 
 	// currently selected mesh is the input object
 	viewer.selected_data_index = viewer.mesh_index(mesh_data_id);
-	updateCamera();
+	viewer.core().align_camera_center(state.planeV, state.planeF);
 
 	viewer.launch();
 }
