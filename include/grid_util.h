@@ -37,9 +37,17 @@ void transformVertices(const Eigen::MatrixXd& V, const Eigen::AlignedBox3d &newO
 // Inputs:
 //   V  #V by 3 matrix of vertex positions
 // Outputs:
-//   centers  x*y*z by 3 matrix of voxel centers
-//   corners  (x+1)*(y+1)*(z+1) by 3 matrix of voxel centers
-void createVoxelGrid(const Eigen::MatrixXd& V, Eigen::MatrixXd& centers, Eigen::MatrixXd& corners);
+//   centers     x*y*z by 3 matrix of voxel centers
+//   corners     (x+1)*(y+1)*(z+1) by 3 matrix of voxel centers
+//   dimensions  3 by 1 vector representing the grid's dimensions in voxels
+//   voxelSize   3 by 1 vector representing the voxel's exact size
+//               - This should be very close to a cube. Leaving handling of miniscule differences for caller to decide
+void createVoxelGrid(
+	const Eigen::MatrixXd& V,
+	Eigen::MatrixXd& centers,
+	Eigen::MatrixXd& corners,
+	Eigen::Vector3i& dimensions,
+	Eigen::Vector3d& voxelSize);
 
 //
 // Aligns given mesh to the axis planes. Keeps the size the same

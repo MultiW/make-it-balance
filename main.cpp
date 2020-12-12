@@ -363,7 +363,7 @@ void draw_workflow_control_window()
 			{
 				delete state.innerMesh;
 			}
-			state.innerMesh = new InnerVoidMesh(state.V, state.F);
+			state.innerMesh = new InnerVoidMesh(state.V, state.F, state.gravity, getBalancePoint());
 			state.innerMesh->convertToMesh(state.innerV, state.innerF);
 			updateInnerMesh();
 		}

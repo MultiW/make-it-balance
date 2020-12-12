@@ -11,6 +11,4 @@ void make_it_stand(const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, Eigen::Ma
 	MiF = F;
 
 	// Voxelize mesh
-	InnerVoidMesh voxelMesh(V, F);
-	voxelMesh.convertToMesh(MiV, MiF);
 }
