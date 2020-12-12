@@ -9,7 +9,6 @@ class Voxel {
 public:
 	Eigen::Vector3d center;
 	double distanceToMesh; // distance to closest face on mesh
-	Eigen::Vector3d closestNormal;
 
 	int xIdx, yIdx, zIdx; // location of voxel within the grid
 
@@ -18,7 +17,7 @@ public:
 	bool isFilled; // for carving algorithm
 	bool isInner; // is voxel inside the given mesh
 
-	Voxel() : center(Eigen::Vector3d::Zero()), distanceToMesh(0), closestNormal(Eigen::Vector3d::Zero()), 
+	Voxel() : center(Eigen::Vector3d::Zero()), distanceToMesh(0), 
 		xIdx(-1), yIdx(-1), zIdx(-1), isFilled(true), isInner(false) {}
 };
 

@@ -14,6 +14,8 @@
 #include <igl/voxel_grid.h>
 #include <igl/grid.h>
 #include <igl/signed_distance.h>
+#include <igl/per_face_normals.h>
+#include <igl/centroid.h>
 
 
 int getBinIdx(double min, double max, double binSize, double currLocation)
@@ -95,7 +97,6 @@ InnerVoidMesh::InnerVoidMesh(
 		innerMesh(xIdx, yIdx, zIdx).yIdx = yIdx;
 		innerMesh(xIdx, yIdx, zIdx).zIdx = zIdx;
 		innerMesh(xIdx, yIdx, zIdx).distanceToMesh = distances(i);
-		innerMesh(xIdx, yIdx, zIdx).closestNormal = closestNormals.row(i).transpose();
 
 		// label inner voxels (inside of mesh + padding)
 		if (distances(i) < 0 && std::abs(distances(i)) >= voxelSize(0))
@@ -143,16 +144,27 @@ InnerVoidMesh::InnerVoidMesh(
 // Should voxels show on the screen (represents the void space)
 bool shouldDisplayVoxel(const Voxel voxel)
 {
+	// TODO isFilled should be false
 	return voxel.isInner && voxel.isFilled;
 }
 
+bool areFacingSameDirection(const Eigen::RowVector3d& v1, const Eigen::RowVector3d& v2)
+{
+	return v1.dot(v2) > 0;
+}
+
+// Given two neighboring voxels, triangulate their common side and append to the list of faces "outF"
 void addCommonSide(const Voxel voxel1, const Voxel voxel2, const Eigen::MatrixXd &V, Eigen::MatrixXi &outF)
 {
-	// No need to display side of two filled voxels
-	if (shouldDisplayVoxel(voxel1) && shouldDisplayVoxel(voxel2))
+	// No need to display side of two displaying voxels
+	// No need to display side of two empty voxels
+	if ((shouldDisplayVoxel(voxel1) && shouldDisplayVoxel(voxel2)) || 
+		(!shouldDisplayVoxel(voxel1) && !shouldDisplayVoxel(voxel2)))
 	{
 		return;
 	}
+
+	Voxel insideVoxel = shouldDisplayVoxel(voxel1) ? voxel1 : voxel2;
 
 	// Find common points
 	std::vector<int> intersect(0);
@@ -163,9 +175,30 @@ void addCommonSide(const Voxel voxel1, const Voxel voxel2, const Eigen::MatrixXd
 
 	assert(intersect.size() == 4);
 
+	// Triangulate
+	Eigen::MatrixXi sideF;
+	sideF.resize(2, 3);
+	sideF <<
+		Eigen::RowVector3i(intersect[0], intersect[1], intersect[2]),
+		Eigen::RowVector3i(intersect[2], intersect[1], intersect[3]);
+
+	// assertion that triangles face the same direction
+	Eigen::MatrixXd N;
+	igl::per_face_normals(V, sideF, N);
+	assert(areFacingSameDirection(N.row(0), N.row(1)));
+
+	// Fix direction of faces. Voxels should be inside out (to represent void space)
+	Eigen::RowVector3d vectToSide;
+	vectToSide = V.row(sideF(0)) - insideVoxel.center.transpose();
+	if (areFacingSameDirection(N.row(0), vectToSide))
+	{
+		sideF << 
+			Eigen::RowVector3i(intersect[2], intersect[1], intersect[0]), 
+			Eigen::RowVector3i(intersect[3], intersect[1], intersect[2]);
+	}
+
 	outF.conservativeResize(outF.rows() + 2, outF.cols());
-	outF.row(outF.rows() - 2) = Eigen::RowVector3i(intersect[0], intersect[1], intersect[2]);
-	outF.row(outF.rows() - 1) = Eigen::RowVector3i(intersect[2], intersect[1], intersect[3]);
+	outF.block(outF.rows() - 2, 0, 2, 3) = sideF;
 }
 
 void InnerVoidMesh::convertToMesh(Eigen::MatrixXd& V, Eigen::MatrixXi& F) 
