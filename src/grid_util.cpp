@@ -6,7 +6,7 @@
 #include <igl/signed_distance.h>
 #include <igl/rotation_matrix_from_directions.h>
 
-const static int GRID_LEN = 15; // number of voxels on each side of the grid
+const static int GRID_LEN = 30; // number of voxels on each side of the grid
 
 void createAlignedBox(const Eigen::MatrixXd &V, Eigen::AlignedBox3d &box) {
 	for (int i = 0; i < V.rows(); i++) {
@@ -37,11 +37,12 @@ void transformVertices(const Eigen::MatrixXd &V, const Eigen::AlignedBox3d &newO
 	Vout = V * scale;
 
 	// Rotate
+	inDiag = scale * inBLF - scale * inTRC;
 	Eigen::Matrix3d R = igl::rotation_matrix_from_directions(inDiag.normalized(), outDiag.normalized());
 	Vout *= R.transpose();
 
 	// Move V to desired location
-	Eigen::Vector3d translate = corner1 - scale * inBLF;
+	Eigen::Vector3d translate = corner1 - R * (scale * inBLF);
 	for (int i = 0; i < Vout.rows(); i++) {
 		Vout.row(i) += translate.transpose();
 	}

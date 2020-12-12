@@ -8,15 +8,13 @@
 #include <tuple>
 #include <math.h>
 #include <algorithm>
+#include <stdio.h>
 
 #include <igl/bounding_box.h>
 #include <igl/voxel_grid.h>
 #include <igl/grid.h>
 #include <igl/signed_distance.h>
 
-
-
-Voxel::Voxel(): isFilled(true), isInner(false) {}
 
 int getBinIdx(double min, double max, double binSize, double currLocation)
 {
@@ -30,7 +28,8 @@ void getNeighborsIdx(double min, double max, double binSize, double currBorder, 
 	assert(currBorder >= min - epsilon && currBorder <= max + epsilon);
 
 	int borderIdx = std::round((currBorder - min) / binSize);
-	assert(std::abs(currBorder - (min + borderIdx * binSize)) < epsilon);
+
+	assert(std::abs(currBorder - (min + (borderIdx) * binSize)) < epsilon);
 
 	int maxIdx = std::round((max - min) / binSize);
 	if (borderIdx == maxIdx) 
@@ -113,13 +112,14 @@ InnerVoidMesh::InnerVoidMesh(
 
 	// iterate corners
 	Eigen::RowVector3d currCorner;
-	double epsilon = voxelSize(0) / 100.0;
+	double epsilon = voxelSize(0) / 10.0;
 	std::vector<int> xNeighs(2);
 	std::vector<int> yNeighs(2);
 	std::vector<int> zNeighs(2);
-	for (int i = 0; i < corners.rows(); i++)
+	for (int rowIdx = 0; rowIdx < corners.rows(); rowIdx++)
 	{
-		currCorner = corners.row(i);
+		currCorner.setZero();
+		currCorner = corners.row(rowIdx);
 		getNeighborsIdx(minX, maxX, voxelSize(0), currCorner(0), epsilon, xNeighs);
 		getNeighborsIdx(minY, maxY, voxelSize(1), currCorner(1), epsilon, yNeighs);
 		getNeighborsIdx(minZ, maxZ, voxelSize(2), currCorner(2), epsilon, zNeighs);
@@ -132,7 +132,7 @@ InnerVoidMesh::InnerVoidMesh(
 				{
 					if (xNeighs[i] != -1 && yNeighs[j] != -1 && zNeighs[k] != -1)
 					{
-						innerMesh(xNeighs[i], yNeighs[j], zNeighs[k]).cornerIndices.insert(i);
+						innerMesh(xNeighs[i], yNeighs[j], zNeighs[k]).cornerIndices.insert(rowIdx);
 					}
 				}
 			}
@@ -141,12 +141,12 @@ InnerVoidMesh::InnerVoidMesh(
 }
 
 // Should voxels show on the screen (represents the void space)
-bool shouldDisplayVoxel(const Voxel &voxel)
+bool shouldDisplayVoxel(const Voxel voxel)
 {
 	return voxel.isInner && voxel.isFilled;
 }
 
-void addCommonSide(const Voxel &voxel1, const Voxel &voxel2, const Eigen::MatrixXd &V, Eigen::MatrixXi &outF)
+void addCommonSide(const Voxel voxel1, const Voxel voxel2, const Eigen::MatrixXd &V, Eigen::MatrixXi &outF)
 {
 	// No need to display side of two filled voxels
 	if (shouldDisplayVoxel(voxel1) && shouldDisplayVoxel(voxel2))
@@ -155,34 +155,37 @@ void addCommonSide(const Voxel &voxel1, const Voxel &voxel2, const Eigen::Matrix
 	}
 
 	// Find common points
-	std::vector<int> intersect;
+	std::vector<int> intersect(0);
 	std::set_intersection(
 		voxel1.cornerIndices.begin(), voxel1.cornerIndices.end(), 
-		voxel2.cornerIndices.begin(), voxel2.cornerIndices.begin(),
+		voxel2.cornerIndices.begin(), voxel2.cornerIndices.end(),
 		std::inserter(intersect, intersect.begin()));
 
 	assert(intersect.size() == 4);
 
 	outF.conservativeResize(outF.rows() + 2, outF.cols());
-	outF.row(outF.rows() - 2) << intersect[0], intersect[1], intersect[2];
-	outF.row(outF.rows() - 1) << intersect[2], intersect[1], intersect[3];
+	outF.row(outF.rows() - 2) = Eigen::RowVector3i(intersect[0], intersect[1], intersect[2]);
+	outF.row(outF.rows() - 1) = Eigen::RowVector3i(intersect[2], intersect[1], intersect[3]);
 }
 
 void InnerVoidMesh::convertToMesh(Eigen::MatrixXd& V, Eigen::MatrixXi& F) 
 {
+	V.resize(corners.rows(), corners.cols());
 	V = corners;
 
 	F.resize(0, 3);
 	Eigen::MatrixXi currF;
+	Voxel currVoxel;
 	for (int i = 1; i < dimensions(0)-1; i++)
 	{
 		for (int j = 1; j < dimensions(1)-1; j++)
 		{
-			for (int k = 1; k < dimensions(k)-1; k++)
+			for (int k = 1; k < dimensions(2)-1; k++)
 			{
 				currF.resize(0, 3);
 
-				Voxel currVoxel = innerMesh(i, j, k);
+				currVoxel = innerMesh(i, j, k);
+
 				if (!shouldDisplayVoxel(currVoxel))
 				{
 					continue;
@@ -198,7 +201,7 @@ void InnerVoidMesh::convertToMesh(Eigen::MatrixXd& V, Eigen::MatrixXi& F)
 				// Add faces to output
 				int newFacesCount = currF.rows();
 				F.conservativeResize(F.rows() + newFacesCount, F.cols());
-				F.block(F.rows() - newFacesCount, 0, newFacesCount, 3) = currF;
+				F.block(F.rows() - newFacesCount, 0, newFacesCount, currF.cols()) = currF;
 			}
 		}
 	}

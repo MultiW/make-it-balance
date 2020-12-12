@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 	viewer.append_mesh();
 	plane_data_id = viewer.data().id;
 	viewer.data(plane_data_id).set_mesh(state.planeV, state.planeF);
-	
+
 	// gravity vector (for debugging)
 	if (DEBUG)
 	{

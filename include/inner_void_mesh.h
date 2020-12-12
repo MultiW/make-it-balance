@@ -18,7 +18,8 @@ public:
 	bool isFilled; // for carving algorithm
 	bool isInner; // is voxel inside the given mesh
 
-	Voxel();
+	Voxel() : center(Eigen::Vector3d::Zero()), distanceToMesh(0), closestNormal(Eigen::Vector3d::Zero()), 
+		xIdx(-1), yIdx(-1), zIdx(-1), isFilled(true), isInner(false) {}
 };
 
 class InnerVoidMesh {
