@@ -267,7 +267,8 @@ bool mouse_down(igl::opengl::glfw::Viewer& viewer, int x, int y)
 			updateBalancePoint();
 			return true;
 		}
-	} 
+	}
+	return false;
 }
 
 void draw_viewer_menu()
@@ -387,7 +388,7 @@ void draw_workflow_control_window()
 				Eigen::MatrixXd carvePlaneV;
 				Eigen::MatrixXi carvePlaneF;
 				Eigen::Vector3d com;
-				state.innerMesh->carveInnerMesh(carvePlaneV, carvePlaneF, com);
+				state.innerMesh->carveInnerMeshStep(carvePlaneV, carvePlaneF, com);
 				state.innerMesh->convertToMesh(state.innerV, state.innerF);
 				updateInnerMesh();
 
@@ -399,9 +400,15 @@ void draw_workflow_control_window()
 				}
 			}
 		}
+		if (ImGui::Button("Finish Balancing", ImVec2(-1, 0)))
+		{
+			state.innerMesh->carveInnerMesh();
+			state.innerMesh->convertToMesh(state.innerV, state.innerF);
+			updateInnerMesh();
+		}
 		if (state.innerMesh->isOptimized())
 		{
-			ImGui::Text("Object is balanced!");
+			ImGui::Text("Completed Carving");
 		}
 	}
 

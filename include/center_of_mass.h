@@ -1,4 +1,4 @@
-#include <Eigen/Core>
+#include <Eigen/Dense>
 
 // Compute the center of mass of a mesh V,F
 // Honestly, you can probably use https://github.com/libigl/libigl/blob/master/include/igl/centroid.h
