@@ -1,4 +1,4 @@
-#include "../include/grid_util.h"
+#include "grid_util.h"
 
 #include <igl/bounding_box.h>
 #include <igl/voxel_grid.h>

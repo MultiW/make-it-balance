@@ -13,6 +13,7 @@ find_package(LIBIGL REQUIRED QUIET)
 # include directories
 include_directories("${PROJECT_SOURCE_DIR}/include/")
 include_directories(${LIBIGL_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR})
 
 # include source code
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)

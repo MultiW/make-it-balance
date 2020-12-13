@@ -12,7 +12,6 @@
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <igl/bounding_box.h>
 #include <igl/grid.h>
-#include <igl/centroid.h>
 
 #include "include/grid_util.h"
 #include "include/inner_void_mesh.h"

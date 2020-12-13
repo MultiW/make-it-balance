@@ -1,13 +1,18 @@
-# libigl example project
+# Make It Stand
 
-A blank project example showing how to use libigl and cmake. Feel free and
-encouraged to copy or fork this project as a way of starting a new personal
-project using libigl.
+In this program, we implemented a methodology to modify 3D objects in order to balance them
+on defined balance points. The methodology is described in detail in the paper:
+_Make it stand: balancing shapes for 3D fabrication_ [[1]](#1).
 
-## See the tutorial first
+## Program
 
-Then build, run and understand the [libigl
-tutorial](http://libigl.github.io/libigl/tutorial/).
+A 3D object printed out in reality may not balance as we want it to. Our program 
+helps a user create a balanced 3D object given any point of balance
+and orientation of the object.
+
+## Implementation
+
+
 
 ## Dependencies
 
@@ -28,12 +33,19 @@ Compile this project using the standard cmake routine:
     cmake ..
     make
 
-This should find and build the dependencies and create a `example_bin` binary.
+This should find and build the dependencies.
 
 ## Run
 
 From within the `build` directory just issue:
 
-    ./example
+    ./make-it-stand
 
-A glfw app should launch displaying a 3D cube.
+A glfw app should launch displaying the default bunny mesh with menu options to select the balancing options.
+
+## References
+<a id="1">[1]</a> 
+Romain Prévost, Emily Whiting, Sylvain Lefebvre, and Olga Sorkine-Hornung. 2013. 
+Make it stand: balancing shapes for 3D fabrication. 
+ACM Trans. Graph. 32, 4, Article 81 (July 2013), 10 pages. 
+DOI: https://doi.org/10.1145/2461912.2461957

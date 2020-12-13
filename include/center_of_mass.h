@@ -18,10 +18,10 @@
 double center_of_mass(
     const Eigen::MatrixXd &V,
     const Eigen::MatrixXi &F,
-    Eigen::Vector3d &C);
+    Eigen::Vector3d &center);
 
 void center_of_mass(
     const Eigen::MatrixXd &V,
     const Eigen::MatrixXi &F,
     double mass,
-    Eigen::Vector3d &C);
+    Eigen::Vector3d &center);
