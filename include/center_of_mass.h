@@ -11,8 +11,17 @@
 // Output:
 //  C 3D vector of the center of mass of V,F
 //
+// Return:
+//  mass double
+//
+
+double center_of_mass(
+    const Eigen::MatrixXd &V,
+    const Eigen::MatrixXi &F,
+    Eigen::Vector3d &C);
 
 void center_of_mass(
     const Eigen::MatrixXd &V,
     const Eigen::MatrixXi &F,
+    double mass,
     Eigen::Vector3d &C);

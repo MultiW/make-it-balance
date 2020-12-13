@@ -23,13 +23,28 @@ public:
 
 class InnerVoidMesh {
 	List3d<Voxel> innerMesh;
-	Eigen::MatrixXd V;
+	Eigen::MatrixXd V; // object
 	Eigen::MatrixXi F;
+	Eigen::MatrixXd planeV; // plane
+	Eigen::MatrixXi planeF;
 	Eigen::Vector3d gravity;
 	Eigen::Vector3d balancePoint;
+
 	Eigen::Vector3i dimensions; // in voxels
+	Eigen::Vector3d voxelSize;
 	Eigen::MatrixXd corners; // corners of all voxels
+
+	Eigen::Vector3d targetCOM; // optimal center of mass for object to balance
+	Eigen::Vector3d currCOM; // center of mass after carving the object
+	double mass;
 public:
-	InnerVoidMesh(const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, const Eigen::Vector3d &gravity, const Eigen::Vector3d &balancePoint);
+	InnerVoidMesh(
+		const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, 
+		const Eigen::MatrixXd &planeV, const Eigen::MatrixXi &planeF, 
+		const Eigen::Vector3d &gravity, 
+		const Eigen::Vector3d &balancePoint);
 	void convertToMesh(Eigen::MatrixXd &V, Eigen::MatrixXi &F);
+	void carveInnerMesh(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi &carvePlaneF, Eigen::Vector3d& com);
+	double getCoMDistance();
+	bool isOptimized();
 };

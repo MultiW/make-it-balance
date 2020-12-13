@@ -19,6 +19,7 @@ void createAlignedBox(const Eigen::MatrixXd& V, Eigen::AlignedBox3d& box);
 // - Based on the transformation between the vertices' bounding
 //   box and the given destination bounding box
 // - Translation is based on the BottomLeftFloor (Eigen::AlignedBox corner)
+// - Rotations are at most 90 degrees. The input parameters do not allow definitions of larger rotations
 //
 // Inputs:
 //   V               #V by 3 matrix of vertices

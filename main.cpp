@@ -20,7 +20,8 @@
 
 #define PI 3.14159265
 
-const bool DEBUG = false;
+const bool DEBUG = true;
+
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
 
 // Viewer data indices
@@ -28,6 +29,7 @@ int mesh_data_id;
 int inner_data_mesh_id;
 int plane_data_id;
 int gravity_data_id;
+int carve_plane_data_id;
 
 const Eigen::Vector3d DEFAULT_GRAVITY(0.0,-1.0,0.0);
 const float DEFAULT_GRAVITY_YAW = 0.0;
@@ -64,7 +66,7 @@ struct State
 
 	int balancePointIdx;
 
-	// gravity unit vector
+	// gravity unit vector (relative to original mesh position)
 	Eigen::Vector3d gravity;
 
 	// object orientation 
@@ -160,6 +162,7 @@ void updateMesh()
 
 void updateInnerMesh()
 {
+	viewer.data(inner_data_mesh_id).clear();
 	viewer.data(inner_data_mesh_id).set_mesh(state.innerV, state.innerF);
 }
 
@@ -168,6 +171,11 @@ void clearInnerMesh()
 	state.innerV.resize(0,3);
 	state.innerF.resize(0,3);
 	viewer.data(inner_data_mesh_id).clear();
+
+	if (DEBUG)
+	{
+		//viewer.data(carve_plane_data_id).clear();
+	}
 }
 
 bool findLowestPointIdx(const Eigen::MatrixXd &V, int &lowestIdx)
@@ -289,6 +297,9 @@ void draw_workflow_control_window()
 			state.selectOrientation = false;
 			state.isCarving = false;
 
+			// Update balance point color
+			updateBalancePoint();
+
 			// Undo carving
 			clearInnerMesh();
 			viewer.data(mesh_data_id).show_faces = true;
@@ -363,7 +374,7 @@ void draw_workflow_control_window()
 			{
 				delete state.innerMesh;
 			}
-			state.innerMesh = new InnerVoidMesh(state.V, state.F, state.gravity, getBalancePoint());
+			state.innerMesh = new InnerVoidMesh(state.V, state.F, state.planeV, state.planeF, Eigen::Vector3d(0, -1, 0), getBalancePoint());
 			state.innerMesh->convertToMesh(state.innerV, state.innerF);
 			updateInnerMesh();
 		}
@@ -372,7 +383,26 @@ void draw_workflow_control_window()
 	{
 		if (ImGui::Button("Carve", ImVec2(-1, 0)))
 		{
-			// TODO
+			if (!state.innerMesh->isOptimized())
+			{
+				Eigen::MatrixXd carvePlaneV;
+				Eigen::MatrixXi carvePlaneF;
+				Eigen::Vector3d com;
+				state.innerMesh->carveInnerMesh(carvePlaneV, carvePlaneF, com);
+				state.innerMesh->convertToMesh(state.innerV, state.innerF);
+				updateInnerMesh();
+
+				if (DEBUG)
+				{
+					viewer.data(carve_plane_data_id).clear();
+					viewer.data(carve_plane_data_id).set_mesh(carvePlaneV, carvePlaneF);
+					viewer.data(carve_plane_data_id).add_points(com.transpose(), orange);
+				}
+			}
+		}
+		if (state.innerMesh->isOptimized())
+		{
+			ImGui::Text("Object is balanced!");
 		}
 	}
 
@@ -414,6 +444,9 @@ int main(int argc, char *argv[])
 		viewer.append_mesh();
 		gravity_data_id = viewer.data().id;
 		updateGravity();
+
+		viewer.append_mesh();
+		carve_plane_data_id = viewer.data().id;
 	}
 
 	// currently selected mesh is the input object
