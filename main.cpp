@@ -400,7 +400,7 @@ void draw_workflow_control_window()
 				}
 			}
 		}
-		if (ImGui::Button("Finish Balancing", ImVec2(-1, 0)))
+		if (ImGui::Button("Finish Carving", ImVec2(-1, 0)))
 		{
 			state.innerMesh->carveInnerMesh();
 			state.innerMesh->convertToMesh(state.innerV, state.innerF);

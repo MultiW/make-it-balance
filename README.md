@@ -12,22 +12,37 @@ and an orientation of the object. To balance the object, our program selects reg
 within the object that it decides will be empty, thus adjusting the center of mass
 for the object. We assume that the objects we are working with solid objects (not hollow).
 
-Once the program is running, we can select our balancing options. The first option to
-choose is a point of balance by clicking on the object. The selected balance point
-is shown as a yellow dot.
+Once the program is running, we can begin choosing our balancing options using the
+**Make It Stand** menu on the left. First, we configure
+the point of balance by clicking on object. The selected balance point
+will appear as a yellow dot.
 
-![IMAGE HERE](images/)
+<img src="images/select-point.png" alt="drawing" width="600">
+<br/>
+<br/>
+
 
 Next, we adjust the rotation of the object. Rotation is defined in terms of yaw, pitch, 
-and roll.
+and roll. Note that the plane shown on the screen represents the ground.
 
-![IMAGE HERE](images/)
+<img src="images/rotate.png" alt="drawing" width="600">
+<br/>
+<br/>
 
-We have now defined how our object will look statically. We can begin the carving the inside of
-the object to make it balance. At first, nothing is carved, so the inside of the mesh is empty.
+
+Now that we defined how our object will look statically. We can begin the carving process
+to make a balanced object. At first, nothing is carved, meaning that the inside of the
+object is full/solid.
+
+<img src="images/begin-carving.png" alt="drawing" width="600">
+<br/>
+<br/>
 
 
-Clicking on the _Carve_ button will begin the carving process. 
+Click the **Carve** button run one iteration of carving. Click the  **Finish Carving** button
+to complete the carving of the image.
+
+<img src="images/finish-carving.png" alt="drawing" width="600">
 
 
 ## Implementation of Balancing
