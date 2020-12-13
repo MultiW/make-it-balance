@@ -19,7 +19,7 @@
 #include <igl/centroid.h>
 
 const int MAX_ITER = 20;
-const int MAX_CARVE = 50; // max number of voxels to carve per iteration
+const int MAX_CARVE = 1000; // max number of voxels to carve per iteration
 const double MAX_EMPTY = 0.80; // stop carving when mesh is this empty
 
 int getBinIdx(double min, double max, double binSize, double currLocation)
@@ -60,7 +60,8 @@ InnerVoidMesh::InnerVoidMesh(
 	const Eigen::MatrixXd &planeV, const Eigen::MatrixXi &planeF, 
 	const Eigen::Vector3d &gravity, 
 	const Eigen::Vector3d &balancePoint): 
-	planeV(planeV), planeF(planeF), gravity(gravity), targetCOM(balancePoint.transpose()), balancePoint(balancePoint), innerMesh(List3d<Voxel>()), voxelsDisplaying(0)
+	planeV(planeV), planeF(planeF), gravity(gravity), targetCOM(balancePoint.transpose()), balancePoint(balancePoint), innerMesh(List3d<Voxel>()), 
+	voxelsDisplaying(0), iterations(0)
 {
 	// Compute center of mass of initial un-carved object
 	this->mass = center_of_mass(V, F, this->currCOM);
@@ -281,7 +282,9 @@ double InnerVoidMesh::getCoMDistance()
 	double comHeightDiff = std::abs(distances(1) - distances(0));
 
 	// projected distance using pythagorean theorem
-	return std::sqrt(std::pow(comDistance, 2) - std::pow(comHeightDiff, 2));
+	double term1 = std::pow(comDistance, 2);
+	double term2 = std::pow(comHeightDiff, 2);
+	return std::sqrt(std::max(term1, term2) - std::min(term1, term2));
 }
 
 bool InnerVoidMesh::isOptimized()
@@ -332,6 +335,8 @@ void updateCenterOfMass(
 
 void InnerVoidMesh::carveInnerMeshStep(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi &carvePlaneF, Eigen::Vector3d& com)
 {
+	this->iterations++;
+
 	// plane perpendicular to the cutting plane
 	Eigen::MatrixXd cuttingPlaneTV(3,3);
 	Eigen::MatrixXi cuttingPlaneTF(1,3);
@@ -390,7 +395,7 @@ void InnerVoidMesh::carveInnerMeshStep(Eigen::MatrixXd &carvePlaneV, Eigen::Matr
 			for (int k = 1; k < dimensions(2) - 1; k++)
 			{
 				currVoxel = &innerMesh(i, j, k);
-				if (!currVoxel->isInner || currVoxel->isFilled)
+				if (!currVoxel->isInner || !currVoxel->isFilled)
 				{
 					continue;
 				}
@@ -419,13 +424,9 @@ void InnerVoidMesh::carveInnerMeshStep(Eigen::MatrixXd &carvePlaneV, Eigen::Matr
 	};
 	std::sort(voxelList.begin(), voxelList.end(), compareDistance());
 
-	printf("num to carve: %zu\n", voxelList.size());
-
 	// carve inner mesh (starting with the furthest from the plane)
 	for (int i = voxelList.size() - 1; i >= std::max(0, (int) voxelList.size() - MAX_CARVE); i--)
 	{
-		printf("+1\n");
-
 		Voxel* currVoxel = voxelList[i].first;
 		int x = currVoxel->xIdx;
 		int y = currVoxel->yIdx;
@@ -453,6 +454,9 @@ void InnerVoidMesh::carveInnerMesh()
 {
 	while(!isOptimized())
 	{
-		carveInnerMesh();
+		Eigen::MatrixXd tempV;
+		Eigen::MatrixXi tempF;
+		Eigen::Vector3d tempCom;
+		carveInnerMeshStep(tempV, tempF, tempCom);
 	}
 }

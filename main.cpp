@@ -19,7 +19,7 @@
 
 #define PI 3.14159265
 
-const bool DEBUG = true;
+const bool DEBUG = false;
 
 const std::string DEFAULT_MESH_FILE = "../data/bunny.off";
 

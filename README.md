@@ -16,12 +16,12 @@ Once the program is running, we can select our balancing options. The first opti
 choose is a point of balance by clicking on the object. The selected balance point
 is shown as a yellow dot.
 
-[IMAGE HERE](images/)
+![IMAGE HERE](images/)
 
 Next, we adjust the rotation of the object. Rotation is defined in terms of yaw, pitch, 
 and roll.
 
-[IMAGE HERE](images/)
+![IMAGE HERE](images/)
 
 We have now defined how our object will look statically. We can begin the carving the inside of
 the object to make it balance. At first, nothing is carved, so the inside of the mesh is empty.
