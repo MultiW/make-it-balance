@@ -6,7 +6,7 @@
 #include <igl/signed_distance.h>
 #include <igl/rotation_matrix_from_directions.h>
 
-const static int GRID_LEN = 30; // number of voxels on each side of the grid
+const static int GRID_LEN = 50; // number of voxels on each side of the grid
 
 void createAlignedBox(const Eigen::MatrixXd &V, Eigen::AlignedBox3d &box) {
 	for (int i = 0; i < V.rows(); i++) {

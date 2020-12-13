@@ -19,6 +19,8 @@
 #include <igl/centroid.h>
 
 
+const int MAX_CARVE = 50; // max number of voxels to carve per iteration
+
 int getBinIdx(double min, double max, double binSize, double currLocation)
 {
 	assert(currLocation >= min && currLocation <= max);
@@ -57,7 +59,7 @@ InnerVoidMesh::InnerVoidMesh(
 	const Eigen::MatrixXd &planeV, const Eigen::MatrixXi &planeF, 
 	const Eigen::Vector3d &gravity, 
 	const Eigen::Vector3d &balancePoint): 
-	V(V), F(F), planeV(planeV), planeF(planeF), gravity(gravity), targetCOM(balancePoint.transpose()), balancePoint(balancePoint), innerMesh(List3d<Voxel>())
+	planeV(planeV), planeF(planeF), gravity(gravity), targetCOM(balancePoint.transpose()), balancePoint(balancePoint), innerMesh(List3d<Voxel>())
 {
 	// Compute center of mass of initial un-carved object
 	this->mass = center_of_mass(V, F, this->currCOM);
@@ -159,11 +161,12 @@ bool areFacingSameDirection(const Eigen::RowVector3d& v1, const Eigen::RowVector
 }
 
 // Given two neighboring voxels, triangulate their common side and append to the list of faces "outF"
-void addCommonSide(
-	const Voxel voxel1, const Voxel voxel2, 
+void appendCommonSide(
+	const Voxel &voxel1, const Voxel &voxel2, 
 	const Eigen::MatrixXd &V, Eigen::MatrixXi &outF, 
 	bool onlyNecessary=true)
 {
+	Voxel insideVoxel;
 	if (onlyNecessary)
 	{
 		// No need to display side of two displaying voxels
@@ -173,9 +176,12 @@ void addCommonSide(
 		{
 			return;
 		}
+		insideVoxel = shouldDisplayVoxel(voxel1) ? voxel1 : voxel2;
 	}
-
-	Voxel insideVoxel = shouldDisplayVoxel(voxel1) ? voxel1 : voxel2;
+	else
+	{
+		insideVoxel = voxel1;
+	}
 
 	// Find common points
 	std::vector<int> intersect(0);
@@ -235,12 +241,12 @@ void InnerVoidMesh::convertToMesh(Eigen::MatrixXd& V, Eigen::MatrixXi& F)
 					continue;
 				}
 
-				addCommonSide(innerMesh(i - 1, j, k), currVoxel, corners, currF);
-				addCommonSide(innerMesh(i + 1, j, k), currVoxel, corners, currF);
-				addCommonSide(innerMesh(i, j - 1, k), currVoxel, corners, currF);
-				addCommonSide(innerMesh(i, j + 1, k), currVoxel, corners, currF);
-				addCommonSide(innerMesh(i, j, k - 1), currVoxel, corners, currF);
-				addCommonSide(innerMesh(i, j, k + 1), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i - 1, j, k), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i + 1, j, k), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i, j - 1, k), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i, j + 1, k), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i, j, k - 1), currVoxel, corners, currF);
+				appendCommonSide(innerMesh(i, j, k + 1), currVoxel, corners, currF);
 				
 				// Add faces to output
 				int newFacesCount = currF.rows();
@@ -293,6 +299,32 @@ void flipFaces(Eigen::MatrixXi& F)
 	}
 }
 
+// Add or remove the side between the two voxels to the global com
+void updateCenterOfMass(
+	const Voxel &insertVoxel, const Voxel &neighbor, const Eigen::MatrixXd &V, double mass, 
+	Eigen::Vector3d &globalCom)
+{
+	// Get common side mesh
+	Eigen::MatrixXi F;
+	F.resize(0, 3);
+	appendCommonSide(insertVoxel, neighbor, V, F, true);
+
+	// Get center of mass for current side
+	Eigen::Vector3d CoM;
+	center_of_mass(V, F, mass, CoM);
+
+	// Case 1: remove this side
+	if (shouldDisplayVoxel(neighbor))
+	{
+		globalCom -= CoM;
+	}
+	// Case 2: add new side
+	else
+	{
+		globalCom += CoM;
+	}
+}
+
 void InnerVoidMesh::carveInnerMesh(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi &carvePlaneF, Eigen::Vector3d& com)
 {
 	// plane perpendicular to the cutting plane
@@ -331,8 +363,6 @@ void InnerVoidMesh::carveInnerMesh(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi
 	assert(areFacingSameDirection(N.row(1), N.row(2)));
 	assert(areFacingSameDirection(N.row(2), N.row(3)));
 
-
-
 	// make sure plane faces the current center of mass
 	Eigen::VectorXd distances, closestFaces;
 	Eigen::MatrixXd closestPoints, closestNormals;
@@ -345,7 +375,7 @@ void InnerVoidMesh::carveInnerMesh(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi
 	}
 
 	// Carve inner mesh
-	// sort by distance to cutting plane
+	// sort voxels by distance to cutting plane
 	std::vector<std::pair<Voxel*, double>> voxelList; // Voxel, distance-to-plane pair
 	Voxel *currVoxel;
 	for (int i = 1; i < dimensions(0) - 1; i++)
@@ -368,31 +398,54 @@ void InnerVoidMesh::carveInnerMesh(Eigen::MatrixXd &carvePlaneV, Eigen::MatrixXi
 
 				if (distances(0) > 0)
 				{
-					bool inserted = false;
-					for (int insertIdx = 0; insertIdx < voxelList.size(); insertIdx++)
-					{
-						if (distances(0) > voxelList[insertIdx].second)
-						{
-							voxelList.insert(voxelList.begin() + insertIdx + 1, std::make_pair(currVoxel, distances(0)));
-						}
-					}
-					currVoxel->isFilled = false;
+					//bool inserted = false;
+					//for (int insertIdx = 0; insertIdx < voxelList.size(); insertIdx++)
+					//{
+					//	if (distances(0) > voxelList[insertIdx].second)
+					//	{
+					//		voxelList.insert(voxelList.begin() + insertIdx + 1, std::make_pair(currVoxel, distances(0)));
+					//	}
+					//}
+					//if (!inserted)
+					//{
+					//	voxelList.push_back(std::make_pair(currVoxel, distances(0)));
+					//}
+					voxelList.push_back(std::make_pair(currVoxel, distances(0)));
 				}
 			}
 		}
 	}
 
-	// carve inner mesh (starting with the furthest from the plane)
-	for (int i = voxelList.size() - 1; i > 0 || i > voxelList.size() - 20; i--)
+	// sort by distance
+	struct compareDistance
 	{
-		std::pair<Voxel*, double> currVoxel = voxelList[i];
-		currVoxel.first->isFilled = false;
+		inline bool operator() (const std::pair<Voxel*, double> pair1, const std::pair<Voxel*, double> pair2)
+		{
+			return (pair1.first < pair2.first);
+		}
+	};
+	std::sort(voxelList.begin(), voxelList.end(), compareDistance());
+
+	// carve inner mesh (starting with the furthest from the plane)
+	for (int i = voxelList.size() - 1; i >= std::max(0, (int) voxelList.size() - MAX_CARVE); i--)
+	{
+		Voxel* currVoxel = voxelList[i].first;
+		int x = currVoxel->xIdx;
+		int y = currVoxel->yIdx;
+		int z = currVoxel->zIdx;
+
+		// Add voxel
+		currVoxel->isFilled = false;
 
 		// Update current center of mass
-		Eigen::MatrixXi sideF;
-		Eigen::MatrixXd sideCoM;
-
+		updateCenterOfMass(*currVoxel, this->innerMesh(x + 1, y, z), this->corners, this->mass, this->currCOM);
+		updateCenterOfMass(*currVoxel, this->innerMesh(x - 1, y, z), this->corners, this->mass, this->currCOM);
+		updateCenterOfMass(*currVoxel, this->innerMesh(x, y + 1, z), this->corners, this->mass, this->currCOM);
+		updateCenterOfMass(*currVoxel, this->innerMesh(x, y - 1, z), this->corners, this->mass, this->currCOM);
+		updateCenterOfMass(*currVoxel, this->innerMesh(x, y, z + 1), this->corners, this->mass, this->currCOM);
+		updateCenterOfMass(*currVoxel, this->innerMesh(x, y, z - 1), this->corners, this->mass, this->currCOM);
 	}
 
+	// return current center of mass
 	com = this->currCOM;
 }

@@ -23,8 +23,6 @@ public:
 
 class InnerVoidMesh {
 	List3d<Voxel> innerMesh;
-	Eigen::MatrixXd V; // object
-	Eigen::MatrixXi F;
 	Eigen::MatrixXd planeV; // plane
 	Eigen::MatrixXi planeF;
 	Eigen::Vector3d gravity;

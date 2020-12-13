@@ -174,7 +174,7 @@ void clearInnerMesh()
 
 	if (DEBUG)
 	{
-		//viewer.data(carve_plane_data_id).clear();
+		viewer.data(carve_plane_data_id).clear_points();
 	}
 }
 
@@ -431,7 +431,6 @@ int main(int argc, char *argv[])
 	// display inner voxelized mesh (representing the empty space)
 	viewer.append_mesh();
 	inner_data_mesh_id = viewer.data().id;
-	clearInnerMesh();
 
 	// display plane (representing the ground)
 	viewer.append_mesh();
