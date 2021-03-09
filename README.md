@@ -4,13 +4,11 @@ In this program, we implemented a methodology to modify 3D objects in order to b
 on defined balance points. The methodology is described in detail in the paper:
 _Make it stand: balancing shapes for 3D fabrication_ [[1]](#1).
 
+This project was built from scratch, forked from the [libigl example project](https://github.com/libigl/libigl-example-project).
+
 ## Program
 
-A 3D object printed out in reality may not balance as we want it to. Our program 
-helps a user create a balanced 3D object given a specified point-of-balance
-and an orientation of the object. To balance the object, our program selects regions 
-within the object that it decides will be empty, thus adjusting the center of mass
-for the object. We assume that the objects we are working with solid objects (not hollow).
+A 3D object printed out, in reality, may not balance as we want it. Our program helps a user create a balanced 3D object given a specified point-of-balance and object orientation. Our program selects regions within the object that it decides will be empty when printed. As a result, this adjusts the center of mass for the object and balances it. We assume that the objects we are working with solid objects (not hollow).
 
 Once the program is running, we can begin choosing our balancing options using the
 **Make It Stand** menu on the left. First, we configure
